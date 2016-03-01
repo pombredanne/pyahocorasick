@@ -4,3 +4,5 @@ dist/
 *.dot
 *.swp
 MANIFEST
+/tmp/
+/wheelhouse/

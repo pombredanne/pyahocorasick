@@ -35,7 +35,7 @@ License
 =======
 
 Library is licensed under very liberal two-clauses BSD license.
-Some portions has been realased into public domain.
+Some portions has been released into public domain.
 
 Full text of license is available in LICENSE file.
 

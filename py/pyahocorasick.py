@@ -1,306 +1,212 @@
 # -*- coding: utf-8 -*-
 """
-	Aho-Corasick string search algorithm.
+Aho-Corasick string search algorithm.
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl
-	License   : public domain
+Author    : Wojciech Mula, wojciech_mula@poczta.onet.pl
+WWW       : http://0x80.pl
+License   : public domain
 """
 
 from collections import deque
 
-nil = object()	# used to distinguish from None
+# used to distinguish from None
+nil = object()
+
 
 class TrieNode(object):
-	"""
-	Node of trie/Aho-Corasick automaton
-	"""
+    __slots__ = 'keyitem', 'value', 'fail', 'children'
 
-	__slots__ = ['char', 'output', 'fail', 'children']
+    def __init__(self, keyitem):
+        # keyitem, must hashable. For strings this is a character. For sequence,
+        # an element of the sequence.
+        self.keyitem = keyitem
+        # value associated with this node
+        self.value = nil
+        # failure link used by Aho-Corasick automaton
+        self.fail = nil
+        self.children = {}
 
-	def __init__(self, char):
-		"""
-		Constructs an empty node
-		"""
-
-		self.char = char		# character
-		self.output = nil		# an output function for this node
-		self.fail = nil			# fail link used by Aho-Corasick automaton
-		self.children = {}		# children
-
-	def __repr__(self):
-		"""
-		Textual representation of node.
-		"""
-
-		if self.output is not nil:
-			return "<TrieNode '%s' '%s'>" % (self.char, self.output)
-		else:
-			return "<TrieNode '%s'>" % self.char
+    def __repr__(self):
+        if self.value is not nil:
+            return "<TrieNode '%s' '%s'>" % (self.keyitem, self.value)
+        else:
+            return "<TrieNode '%s'>" % self.keyitem
 
 
 class Trie(object):
-	"""
-	Trie/Aho-Corasick automation
-	"""
-
-	def __init__(self):
-		"""
-		Construct an empty trie
-		"""
-
-		self.root = TrieNode('')
-
-
-	def __get_node(self, word):
-		"""
-		Private function retrieving a final node of trie
-		for given word
-
-		Returns node or None, if the trie doesn't contain the word.
-		"""
-
-		node = self.root
-		for c in word:
-			try:
-				node = node.children[c]
-			except KeyError:
-				return None
-
-		return node
-
-
-	def get(self, word, default=nil):
-		"""
-		Retrieves output value associated with word.
-
-		If there is no word returns default value,
-		and if default is not given rises KeyError.
-		"""
-
-		node = self.__get_node(word)
-		output = nil
-		if node:
-			output = node.output
-
-		if output is nil:
-			if default is nil:
-				raise KeyError("no key '%s'" % word)
-			else:
-				return default
-		else:
-			return output
-
-
-	def keys(self):
-		"""
-		Generator returning all keys (i.e. word) stored in trie
-		"""
-
-		for key, _ in self.items():
-			yield key
-
-
-	def values(self):
-		"""
-		Generator returning all values associated with words stored in a trie.
-		"""
-
-		for _, value in self.items():
-			yield value
-
-
-	def items(self):
-		"""
-		Generator returning all keys and values stored in a trie.
-		"""
-
-		L = []
-		def aux(node, s):
-			s = s + node.char
-			if node.output is not nil:
-				L.append((s, node.output))
-
-			for child in node.children.values():
-				if child is not node:
-					aux(child, s)
-
-		aux(self.root, '')
-		return iter(L)
-
-
-	def __len__(self):
-		"""
-		Calculates number of words in a trie.
-		"""
-
-		stack = deque()
-		stack.append(self.root)
-		n = 0
-		while stack:
-			node = stack.pop()
-			if node.output is not nil:
-				n += 1
-
-			for child in node.children.values():
-				stack.append(child)
-
-		return n
-
-
-	def add_word(self, word, value):
-		"""
-		Adds word and associated value.
-
-		If word already exists, its value is replaced.
-		"""
-		if not word:
-			return
-
-		node = self.root
-		for i, c in enumerate(word):
-			try:
-				node = node.children[c]
-			except KeyError:
-				n = TrieNode(c)
-				node.children[c] = n
-				node = n
-
-		node.output = value
-
-
-	def clear(self):
-		"""
-		Clears trie.
-		"""
-
-		self.root = TrieNode('')
-
-
-	def exists(self, word):
-		"""
-		Checks if whole word is present in the trie.
-		"""
-
-		node = self.__get_node(word)
-		if node:
-			return bool(node.output != nil)
-		else:
-			return False
-
-
-	def match(self, word):
-		"""
-		Checks if word is a prefix of any existing word in the trie.
-		"""
-
-		return (self.__get_node(word) is not None)
-
-
-	def make_automaton(self):
-		"""
-		Converts trie to Aho-Corasick automaton.
-		"""
-
-		queue = deque()
-
-		# 1.
-		for i in range(256):
-			c = chr(i)
-			if c in self.root.children:
-				node = self.root.children[c]
-				node.fail = self.root	# f(s) = 0
-				queue.append(node)
-			else:
-				self.root.children[c] = self.root
-
-		# 2.
-		while queue:
-			r = queue.popleft()
-			for node in r.children.values():
-				queue.append(node)
-				state = r.fail
-				while node.char not in state.children:
-						state = state.fail
-
-				node.fail = state.children.get(node.char, self.root)
-
-
-	def iter(self, string):
-		"""
-		Generator performs Aho-Corasick search string algorithm, yielding
-		tuples containing two values:
-		- position in string
-		- outputs associated with matched strings
-		"""
-		state = self.root
-		for index, c in enumerate(string):
-			while c not in state.children:
-				state = state.fail
-
-			state = state.children.get(c, self.root)
-
-			tmp = state
-			output = []
-			while tmp is not nil:
-				if tmp.output is not nil:
-					output.append(tmp.output)
-
-				tmp = tmp.fail
-
-			if output:
-				yield (index, output)
-
-
-	def find_all(self, string, callback):
-		"""
-		Wrapper on iter method, callback gets an iterator result
-		"""
-		for index, output in self.iter(string):
-			callback(index, output)
-
-
-
-if __name__ == '__main__':
-
-	def demo():
-		words = "he hers his she hi him man".split()
-
-		t = Trie();
-		for w in words:
-			t.add_word(w, w)
-
-		s = "he rshershidamanza "
-
-		t.make_automaton()
-		for res in t.items():
-			print(res)
-
-		for res in t.iter(s):
-			print
-			print('%s' % s)
-			pos, matches = res
-			for fragment in matches:
-				print('%s%s' % ((pos - len(fragment) + 1)*' ', fragment))
-
-	demo()
-
-
-	def bug():
-		patterns = ['GT-C3303','SAMSUNG-GT-C3303K/']
-		text = 'SAMSUNG-GT-C3303i/1.0 NetFront/3.5 Profile/MIDP-2.0 Configuration/CLDC-1.1'
-
-		t = Trie()
-		for pattern in patterns:
-			ret = t.add_word(pattern, (0, pattern))
-
-		t.make_automaton()
-
-		res = list(t.iter(text))
-
-		assert len(res) == 1, 'failed'
-
-	bug()
-
-# vim: ts=4 sw=4 nowrap
-
+    """
+    Trie/Aho-Corasick automaton.
+    """
+
+    def __init__(self, items_range=256, content=str):
+        self.root = TrieNode(None)
+        self.items_range = items_range
+        self.content = content
+
+    def __get_node(self, seq):
+        """
+        Return a final node or None if the trie does not contain the sequence of
+        items.
+        """
+        node = self.root
+        for keyitem in seq:
+            try:
+                node = node.children[keyitem]
+            except KeyError:
+                return None
+        return node
+
+    def get(self, seq, default=nil):
+        """
+        Return the value associated with the sequence of items. If the
+        sequence of items is not present in trie return the `default` if
+        provided or raise a KeyError if not provided.
+        # FIXME: should match the dict semantics.
+        """
+        node = self.__get_node(seq)
+        value = nil
+        if node:
+            value = node.value
+
+        if value is nil:
+            if default is nil:
+                raise KeyError()
+            else:
+                return default
+        else:
+            return value
+
+    def iterkeys(self):
+        return (k for k, _v in self.iteritems())
+
+    def itervalues(self):
+        return (v for _k, v in self.iteritems())
+
+    def iteritems(self):
+        L = []
+
+        def walk(node, s):
+            if s:
+                if not isinstance(s, list):
+                    # FIXME: should use generators
+                    s = [s]
+                s = s + list(node.keyitem)
+            else:
+                if node.keyitem is not None:
+                    s = [node.keyitem]
+                else:
+                    s = []
+            if node.value is not nil:
+                L.append((s, node.value))
+
+            # FIXME: this is using recursion
+            for child in node.children.values():
+                if child is not node:
+                    walk(child, s)
+
+        walk(self.root, None)
+        return iter(L)
+
+    def __len__(self):
+        stack = deque()
+        stack.append(self.root)
+        n = 0
+        while stack:
+            node = stack.pop()
+            if node.value is not nil:
+                n += 1
+            for child in node.children.itervalues():
+                stack.append(child)
+        return n
+
+    def add(self, seq, value):
+        """
+        Add a sequence of items and its associated value to the trie.
+        If seq already exists, its value is replaced.
+        """
+        if not seq:
+            return
+
+        node = self.root
+        for keyitem in seq:
+            try:
+                node = node.children[keyitem]
+            except KeyError:
+                n = TrieNode(keyitem)
+                node.children[keyitem] = n
+                node = n
+        node.value = value
+
+    def exists(self, seq):
+        """
+        Return True if the sequence of items is present in the trie.
+        """
+        node = self.__get_node(seq)
+        if node:
+            return bool(node.value != nil)
+        else:
+            return False
+
+    def match(self, seq):
+        """
+        Return True if the sequence of items is a prefix of any existing
+        sequence of items in the trie.
+        """
+        return self.__get_node(seq) is not None
+
+    def make_automaton(self):
+        """
+        Convert the trie to an Aho-Corasick automaton.
+        `items_range` is the range of all possible items.
+        Defaults to 256 for plain bytes.
+        """
+        queue = deque()
+
+        # 1. create top root children over the items range, failing to root
+        for i in range(self.items_range):
+            if self.content == str:
+                c = chr(i)
+            if self.content == int:
+                c = c
+            if c in self.root.children:
+                node = self.root.children[c]
+                # f(s) = 0
+                node.fail = self.root
+                queue.append(node)
+            else:
+                self.root.children[c] = self.root
+
+        # 2. using the queue of all possible items, walk the trie and add failure links
+        while queue:
+            r = queue.popleft()
+            for node in r.children.values():
+                queue.append(node)
+                state = r.fail
+                while node.keyitem not in state.children:
+                    state = state.fail
+                node.fail = state.children.get(node.keyitem, self.root)
+
+    def search(self, seq):
+        """
+        Perform an Aho-Corasick search for a sequence of items yielding
+        tuples of (position in seq, values associated with matched seq)
+        """
+        state = self.root
+        for index, keyitem in enumerate(seq):
+            # find the first failure link and next state
+            while keyitem not in state.children:
+                state = state.fail
+
+            # follow children or get back to root
+            state = state.children.get(keyitem, self.root)
+
+            tmp = state
+            value = []
+            while tmp is not nil:
+                if tmp.value is not nil:
+                    value.append(tmp.value)
+
+                tmp = tmp.fail
+
+            if value:
+                yield index, value
