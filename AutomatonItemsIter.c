@@ -3,13 +3,8 @@
 	
 	AutomatonItemsIter implementation
 
-	Author    : Wojciech Mu³a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech MuÅ‚a, wojciech_mula@poczta.onet.pl
 	License   : 3-clauses BSD (see LICENSE)
-	Date      : $Date$
-
-	$Id$
-
 */
 #include "AutomatonItemsIter.h"
 
@@ -17,7 +12,7 @@ static PyTypeObject automaton_items_iter_type;
 
 
 typedef struct AutomatonItemsStackItem {
-	LISTITEM_data
+	LISTITEM_data;
 
 	struct TrieNode*	node;
 	size_t depth;
@@ -36,6 +31,7 @@ automaton_items_iter_new(
 	const PatternMatchType matchtype
 ) {
 	AutomatonItemsIter* iter;
+	StackItem* new_item;
 
 	iter = (AutomatonItemsIter*)PyObject_New(AutomatonItemsIter, &automaton_items_iter_type);
 	if (iter == NULL)
@@ -74,7 +70,7 @@ automaton_items_iter_new(
 	else
 		iter->pattern_length = 0;
 	
-	StackItem* new_item = (StackItem*)list_item_new(sizeof(StackItem));
+	new_item = (StackItem*)list_item_new(sizeof(StackItem));
 	if (UNLIKELY(new_item == NULL)) {
 		PyObject_Del((PyObject*)iter);
 		PyErr_NoMemory();
@@ -116,6 +112,9 @@ automaton_items_iter_iter(PyObject* self) {
 
 static PyObject*
 automaton_items_iter_next(PyObject* self) {
+
+	bool output;
+
 	if (UNLIKELY(iter->version != iter->automaton->version)) {
 		PyErr_SetString(PyExc_ValueError, "underlaying automaton has changed, iterator is not valid anymore");
 		return NULL;
@@ -129,7 +128,6 @@ automaton_items_iter_next(PyObject* self) {
 		if (iter->matchtype != MATCH_AT_LEAST_PREFIX and item->depth > iter->pattern_length)
 			continue;
 
-		bool output;
 		switch (iter->matchtype) {
 			case MATCH_EXACT_LENGTH:
 				output = (item->depth == iter->pattern_length);
@@ -219,10 +217,14 @@ automaton_items_iter_next(PyObject* self) {
 					switch (iter->automaton->store) {
 						case STORE_ANY:
 							return Py_BuildValue(
-#ifdef AHOCORASICK_UNICODE
+#ifdef PY3K
+    #ifdef AHOCORASICK_UNICODE
 								"(u#O)",
-#else
+    #else
 								"(y#O)",
+    #endif
+#else
+                                "(s#O)",
 #endif
 								/*key*/ iter->buffer + 1, item->depth,
 								/*val*/ iter->state->output.object
@@ -231,10 +233,14 @@ automaton_items_iter_next(PyObject* self) {
 						case STORE_LENGTH:
 						case STORE_INTS:
 							return Py_BuildValue(
-#ifdef AHOCORASICK_UNICODE
+#ifdef PY3K
+    #ifdef AHOCORASICK_UNICODE
 								"(u#i)",
-#else
+    #else
 								"(y#i)",
+    #endif
+#else
+                                "(s#i)",
 #endif
 								/*key*/ iter->buffer + 1, item->depth,
 								/*val*/ iter->state->output.integer
@@ -253,7 +259,7 @@ automaton_items_iter_next(PyObject* self) {
 #undef iter
 
 static PyTypeObject automaton_items_iter_type = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PY_OBJECT_HEAD_INIT
 	"AutomatonItemsIter",						/* tp_name */
 	sizeof(AutomatonItemsIter),					/* tp_size */
 	0,											/* tp_itemsize? */

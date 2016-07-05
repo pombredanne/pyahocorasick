@@ -3,12 +3,8 @@
 	
 	common definitions and includes
 
-	Author    : Wojciech Mu≥a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech Mu≈Ça, wojciech_mula@poczta.onet.pl
 	License   : public domain
-	Date      : $Date$
-
-	$Id$
 */
 
 #ifndef ahocorasick_common_h_included__
@@ -20,6 +16,25 @@
 #include <iso646.h>
 
 #define DEBUG
+
+#if defined(_MSC_VER)       // Visual Studio compiler
+#   define WINDOWS
+#endif
+
+#if defined(WINDOWS)
+#   include "windows.h"
+#else
+#	include "posix.h"
+#endif
+
+#if PY_MAJOR_VERSION >= 3
+    #define PY3K
+#else
+    #ifdef AHOCORASICK_UNICODE
+        #warning "No support for unicode in version for Python2"
+    #endif
+    #undef AHOCORASICK_UNICODE
+#endif
 
 // setup supported character set
 #ifdef AHOCORASICK_UNICODE

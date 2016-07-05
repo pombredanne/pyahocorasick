@@ -1,6 +1,10 @@
 build/
 dist/
 *.pyc
+*.pyd
 *.dot
 *.swp
+*.so
+*.sh
+*.o
 MANIFEST

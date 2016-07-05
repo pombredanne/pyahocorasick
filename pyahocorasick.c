@@ -5,12 +5,8 @@
 
 	This file include all code from *.c files.
 
-	Author    : Wojciech Mu≥a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech Mu≈Ça, wojciech_mula@poczta.onet.pl
 	License   : 3-clauses BSD (see LICENSE)
-	Date      : $Date$
-
-	$Id$
 */
 
 #include "common.h"
@@ -38,6 +34,7 @@ ahocorasick_module_methods[] = {
 };
 
 
+#ifdef PY3K
 static
 PyModuleDef ahocorasick_module = {
 	PyModuleDef_HEAD_INIT,
@@ -46,9 +43,18 @@ PyModuleDef ahocorasick_module = {
 	-1,
 	ahocorasick_module_methods
 };
+#endif
+
+#ifdef PY3K
+#define init_function PyInit_ahocorasick
+#define init_return(value) return (value)
+#else
+#define init_function initahocorasick
+#define init_return(unused) return
+#endif
 
 PyMODINIT_FUNC
-PyInit_ahocorasick(void) {
+init_function(void) {
 	PyObject* module;
 
 	automaton_as_sequence.sq_length   = automaton_len;
@@ -56,13 +62,18 @@ PyInit_ahocorasick(void) {
 
 	automaton_type.tp_as_sequence = &automaton_as_sequence;
 	
+#ifdef PY3K
 	module = PyModule_Create(&ahocorasick_module);
+#else
+    module = Py_InitModule("ahocorasick", ahocorasick_module_methods);
+#endif
 	if (module == NULL)
-		return NULL;
+		init_return(NULL);
+
 
 	if (PyType_Ready(&automaton_type) < 0) {
 		Py_DECREF(module);
-		return NULL;
+		init_return(NULL);
 	}
 	else
 		PyModule_AddObject(module, "Automaton", (PyObject*)&automaton_type);
@@ -87,5 +98,5 @@ PyInit_ahocorasick(void) {
 	PyModule_AddIntConstant(module, "unicode", 0);
 #endif
 
-	return module;
+	init_return(module);
 }

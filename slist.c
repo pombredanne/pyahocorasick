@@ -9,13 +9,8 @@
 	* pop first
 	* get first/last
 
-	Author    : Wojciech Mu³a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech MuÅ‚a, wojciech_mula@poczta.onet.pl
 	License   : public domain
-	Date      : $Date$
-
-	$Id$
-
 */
 #include "slist.h"
 
@@ -44,9 +39,13 @@ list_init(List* list) {
 
 int
 list_delete(List* list) {
-	ASSERT(list);
-	ListItem* item = list->head;
+
+	ListItem* item;
 	ListItem* tmp;
+
+	ASSERT(list);
+
+	item = list->head;
 	while (item) {
 		tmp = item;
 		item = item->__next;
@@ -92,8 +91,9 @@ list_push_front(List* list, ListItem* item) {
 
 ListItem*
 list_pop_first(List* list) {
-	ASSERT(list);
 	ListItem* item;
+
+	ASSERT(list);
 	
 	if (list->head) {
 		item = list->head;

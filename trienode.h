@@ -3,12 +3,8 @@
 	
 	Trie node declarations
 
-	Author    : Wojciech Mu≥a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech Mu≈Ça, wojciech_mula@poczta.onet.pl
 	License   : 3-clauses BSD (see LICENSE)
-	Date      : $Date$
-
-	$Id$
 */
 
 #ifndef ahocorasick_trienode_h_included
@@ -29,7 +25,8 @@ typedef struct TrieNode {
 #else
 	uint32_t			n;		///< length of next
 #endif
-	uint8_t				eow;	///< end of word marker
+	uint8_t  			eow:1;	    ///< end of word marker
+	uint8_t  			pickle:7;	///< used by pickling mechanism to indicate when fail point to temporary lookup field (for detail see Automaton_pickle.c)
 	TRIE_LETTER_TYPE	letter;	///< incoming edge label
 
 	struct TrieNode**	next;	///< table of pointers
@@ -41,11 +38,14 @@ static TrieNode*
 trienode_new(const TRIE_LETTER_TYPE letter, const char eow);
 
 /* returns child node linked by edge labeled with letter */
-static TrieNode* PURE ALWAYS_INLINE
+static TrieNode* PURE
 trienode_get_next(TrieNode* node, const TRIE_LETTER_TYPE letter);
 
 /* link with child node by edge labeled with letter */
 static TrieNode*
 trienode_set_next(TrieNode* node, const TRIE_LETTER_TYPE letter, TrieNode* child);
+
+static TrieNode* PURE
+trienode_get_ith_unsafe(TrieNode* node, size_t letter);
 
 #endif

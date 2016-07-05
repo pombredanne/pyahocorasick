@@ -3,12 +3,8 @@
 	
 	AutomatonSearchIter implementation
 
-	Author    : Wojciech Mu³a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech MuÅ‚a, wojciech_mula@poczta.onet.pl
 	License   : 3-clauses BSD (see LICENSE)
-	Date      : $Date$
-
-	$Id$
 */
 
 #include "AutomatonSearchIter.h"
@@ -157,20 +153,29 @@ automaton_search_iter_set(PyObject* self, PyObject* args) {
 	// first argument - required string or buffer
 	object = PyTuple_GetItem(args, 0);
 	if (object) {
-#ifdef AHOCORASICK_UNICODE
-		if (PyUnicode_Check(object))
-			len = PyUnicode_GET_SIZE(object);
-		else {
-			PyErr_SetString(PyExc_TypeError, "string required");
-			return NULL;
-		}
+#ifdef PY3K
+    #ifdef AHOCORASICK_UNICODE
+        if (PyUnicode_Check(object))
+            len = PyUnicode_GET_SIZE(object);
+        else {
+            PyErr_SetString(PyExc_TypeError, "string required");
+            return NULL;
+        }
+    #else
+        if (PyBytes_Check(object))
+            len = PyBytes_GET_SIZE(object);
+        else {
+            PyErr_SetString(PyExc_TypeError, "string or bytes object required");
+            return NULL;
+        }
+    #endif
 #else
-		if (PyBytes_Check(object))
-			len = PyBytes_GET_SIZE(object);
-		else {
-			PyErr_SetString(PyExc_TypeError, "string or bytes object required");
-			return NULL;
-		}
+        if (PyString_Check(object)) {
+            len = PyString_GET_SIZE(object);
+        } else {
+            PyErr_SetString(PyExc_TypeError, "string required 2");
+            return NULL;
+        }
 #endif
 	}
 	else
@@ -209,7 +214,7 @@ automaton_search_iter_set(PyObject* self, PyObject* args) {
 		iter->shift += (iter->index >= 0) ? iter->index : 0;
 
 	iter->index		= -1;
-	iter->end		= len;
+	iter->end		= (int)len;
 
 	if (reset) {
 		iter->state  = iter->automaton->root;
@@ -235,7 +240,7 @@ PyMethodDef automaton_search_iter_methods[] = {
 
 
 static PyTypeObject automaton_search_iter_type = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PY_OBJECT_HEAD_INIT
 	"ahocorasick.AutomatonSearchIter",			/* tp_name */
 	sizeof(AutomatonSearchIter),				/* tp_size */
 	0,											/* tp_itemsize? */

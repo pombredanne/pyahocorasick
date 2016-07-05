@@ -4,38 +4,47 @@
 	Helpers functions.
 	This file is included directly.
 
-	Author    : Wojciech Mu≥a, wojciech_mula@poczta.onet.pl
-	WWW       : http://0x80.pl/proj/pyahocorasick/
+	Author    : Wojciech Mu≈Ça, wojciech_mula@poczta.onet.pl
 	License   : public domain
-	Date      : $Date$
-
-	$Id$
 */
 
 
 /* returns bytes or unicode internal buffer */
 static PyObject*
 pymod_get_string(PyObject* obj, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
-#ifdef AHOCORASICK_UNICODE
-	if (PyUnicode_Check(obj)) {
-		*word = PyUnicode_AS_UNICODE(obj);
-		*wordlen = PyUnicode_GET_SIZE(obj);
-		Py_INCREF(obj);
-		return obj;
-	}
-	else {
-		PyErr_SetString(PyExc_TypeError, "string expected");
-		return NULL;
-	}
-#else
-	if (PyBytes_Check(obj)) {
-		*word = (TRIE_LETTER_TYPE*)PyBytes_AS_STRING(obj);
-		*wordlen = PyBytes_GET_SIZE(obj);
-		Py_INCREF(obj);
-		return obj;
-	}
-	else {
-		PyErr_SetString(PyExc_TypeError, "bytes expected");
+#ifdef PY3K
+#   ifdef AHOCORASICK_UNICODE
+        if (PyUnicode_Check(obj)) {
+            *word = PyUnicode_AS_UNICODE(obj);
+            *wordlen = PyUnicode_GET_SIZE(obj);
+            Py_INCREF(obj);
+            return obj;
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError, "string expected");
+            return NULL;
+        }
+#   else
+        if (PyBytes_Check(obj)) {
+            *word = (TRIE_LETTER_TYPE*)PyBytes_AS_STRING(obj);
+            *wordlen = PyBytes_GET_SIZE(obj);
+            Py_INCREF(obj);
+            return obj;
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError, "bytes expected");
+            return NULL;
+        }
+#   endif
+#else // PY_MAJOR_VERSION == 3
+	if (PyString_Check(obj)) {
+        *word = PyString_AS_STRING(obj);
+        *wordlen = PyString_GET_SIZE(obj);
+
+        Py_INCREF(obj);
+        return obj;
+    } else {
+		PyErr_SetString(PyExc_TypeError, "string1 required");
 		return NULL;
 	}
 #endif
@@ -80,6 +89,7 @@ pymod_parse_start_end(
 		return -1;
 
 	start = PyNumber_AsSsize_t(obj, PyExc_IndexError);
+    Py_DECREF(obj);
 	if (start == -1 and PyErr_Occurred())
 		return -1;
 
@@ -87,7 +97,7 @@ pymod_parse_start_end(
 		start = max + start;
 
 	if (start < min or start >= max) {
-		PyErr_Format(PyExc_IndexError, "start index not in range %d..%d", min, max);
+		PyErr_Format(PyExc_IndexError, "start index not in range %zd..%zd", min, max);
 		return -1;
 	}
 
@@ -103,14 +113,15 @@ pymod_parse_start_end(
 		return -1;
 
 	end = PyNumber_AsSsize_t(obj, PyExc_IndexError);
+    Py_DECREF(obj);
 	if (end == -1 and PyErr_Occurred())
 		return -1;
 
 	if (end < 0)
 		end = max - 1 + end;
 
-	if (end < min or end >= max) {
-		PyErr_Format(PyExc_IndexError, "end index not in range %d..%d", min, max);
+	if (end < min or end > max) {
+		PyErr_Format(PyExc_IndexError, "end index not in range %zd..%zd", min, max);
 		return -1;
 	}
 

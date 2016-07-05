@@ -2,6 +2,9 @@
                           pyahocorasick
 ========================================================================
 
+.. image:: https://travis-ci.org/WojciechMula/pyahocorasick.svg?branch=master
+    :target: https://travis-ci.org/WojciechMula/pyahocorasick
+
 .. contents::
 
 Introduction
@@ -25,7 +28,7 @@ __ http://en.wikipedia.org/wiki/Aho-Corasick%20algorithm
 
 There are two versions:
 
-* **C extension**, compatible only with Python3;
+* **C extension**, compatible with Python 2 and 3;
 * pure python module, compatible with Python 2 and 3.
 
 Python module API is similar, but isn't exactly the same as C extension.
@@ -35,15 +38,23 @@ License
 =======
 
 Library is licensed under very liberal two-clauses BSD license.
-Some portions has been realased into public domain.
+Some portions has been released into public domain.
 
 Full text of license is available in LICENSE file.
 
 
-Author
-======
+Authors
+=======
 
-Wojciech Muła, wojciech_mula@poczta.onet.pl
+The main author: Wojciech Muła, wojciech_mula@poczta.onet.pl
+
+This library wouldn't be possible without help of many people,
+who contributed in various ways. They created `pull requests`__,
+reported bugs (on GitHub__ or via direct messages), proposed
+fixes, or spent their valuable time on testing. Thank you.
+
+__ https://github.com/WojciechMula/pyahocorasick/pull
+__ https://github.com/WojciechMula/pyahocorasick/issues
 
 
 See also
@@ -66,7 +77,37 @@ Just run::
 
 		python setup.py install
 
-If compilation succed, module is ready to use.
+If compilation succeed, module is ready to use.
+
+
+Windows building for Python 2.7
+-------------------------------
+
+Prerequisites:
+
+* The latest `Python 2.7`__
+* `Microsoft Visual C++ Compiler for Python 2.7`__ (basically Visual Studio 2008)
+
+__ https://www.python.org/download/releases/2.7/
+__ https://www.microsoft.com/en-us/download/details.aspx?id=44266
+
+Procedure (a copy of **Christian Long's** answer at `Stack Overflow`__):
+
+1. From **Start Menu** run "Visual C++ 2008 Command Prompt".
+2. Set two environment variables::
+
+	SET DISTUTILS_USE_SDK=1
+	SET MSSdk=1
+
+3. Changed current directory to ``pyahocorasick`` directory::
+
+	cd <your path>
+
+4. Then standard Python's build procedure could be used::
+
+	python setup.py install
+
+__ http://stackoverflow.com/questions/26140192/microsoft-visual-c-compiler-for-python-2-7
 
 
 API
@@ -168,14 +209,14 @@ Dictionary methods
 
 .. _keys:
 
-``keys([prefix, [wildchar, [how]]]) => yield strings``
+``keys([prefix, [wildcard, [how]]]) => yield strings``
 	Returns iterator that iterate through words.
 
 	If ``prefix`` (a string) is given, then only words sharing this
 	prefix are yielded.
-	
-	If ``wildchar`` (single character) is given, then prefix is
-	treated as a simple pattern with selected wildchar. Optional
+
+	If ``wildcard`` (single character) is given, then prefix is
+	treated as a simple pattern with selected wildcard. Optional
 	parameter ``how`` controls which strings are matched:
 
 	``MATCH_EXACT_LENGTH`` [default]
@@ -190,14 +231,14 @@ Dictionary methods
 		Strings that have length less or equal to a pattern's length
 		are yielded.
 
-	See `Example 2`_.
+	See `Example 2`_ and the section below.
 
 
-``values([prefix, [wildchar, [how]]]) => yield object``
+``values([prefix, [wildcard, [how]]]) => yield object``
 	Return iterator that iterate through values associated with words.
 	Words are matched as in ``keys`` method.
 
-``items([prefix, [wildchar, [how]]]) => yield tuple (string, object)``
+``items([prefix, [wildcard, [how]]]) => yield tuple (string, object)``
 	Return iterator that iterate through words and associated values.
 	Words are matched as in ``keys`` method.
 
@@ -206,6 +247,21 @@ Dictionary methods
 
 ``len()`` protocol
 	Returns number of distinct words.
+
+
+Wildcards
+^^^^^^^^^
+
+Methods ``keys``, ``values`` and ``items`` accept variant with **wildcard**.
+A wildcard character is equivalent to a question mark used in glob patterns (?)
+or a dot from regular expressions (.). In case of these function a programmer
+can pick any character.
+
+It is not possible to escape a wildcard and thus match it exactly ---
+simply select another char, not present in the pattern. For example::
+
+    automaton.keys("hi?", "?")  # would match "him", "his"
+    automaton.keys("XX?", "X")  # would match "me?", "he?" or "it?"
 
 
 Trie
@@ -229,7 +285,7 @@ Trie
 
 ``clear() => None``
 	Removes all words from dictionary.
-	
+
 	**This method invalidates all iterators.**
 
 ``exists(word) => bool`` or ``word in ...``
@@ -325,7 +381,7 @@ by ``iter`` method of ``Automaton``. Iterator has additional method.
 
 ``set(string, [reset]) => None``
 	Sets new string to process. When ``reset`` is ``False`` (default),
-	then processing is continued, i.e internal state of automaton and
+	then processing is continued, i.e. internal state of automaton and
 	index aren't touched. This allow to process larger strings in chunks,
 	for example::
 
@@ -361,8 +417,8 @@ Example
 ::
 
 	>>> import ahocorasick
-	>>> A = ahocorasick.Automaton() 
-		
+	>>> A = ahocorasick.Automaton()
+
 	# add some words to trie
 	>>> for index, word in enumerate("he her hers she".split()):
 	...   A.add_word(word, (index, word))
@@ -382,7 +438,7 @@ Example
 	Traceback (most recent call last):
 	  File "<stdin>", line 1, in <module>
 	KeyError
-	>>> 
+	>>>
 
 	# convert trie to Aho-Corasick automaton
 	A.make_automaton()
@@ -390,7 +446,7 @@ Example
 	# then find all occurrences in string
 	for item in A.iter("_hershe_"):
 	...  print(item)
-	... 
+	...
 	(2, (0, 'he'))
 	(3, (1, 'her'))
 	(4, (2, 'hers'))
@@ -409,7 +465,7 @@ Demonstration of keys_ behaviour.
 ::
 
 	>>> import ahocorasick
-	>>> A = ahocorasick.Automaton() 
+	>>> A = ahocorasick.Automaton()
 
 	# add some words to trie
 	>>> for index, word in enumerate("cat catastropha rat rate bat".split()):
