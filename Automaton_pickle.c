@@ -3,8 +3,9 @@
 	
 	Implementation of pickling/unpickling routines for Automaton class
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 
 /*
@@ -51,7 +52,7 @@ pickle_dump_replace_fail_with_id(TrieNode* node, const int depth, void* extra) {
 
     ASSERT(sizeof(NodeID*) <= sizeof(TrieNode*));
 #define state ((DumpState*)extra)
-	repl = (NodeID*)memalloc(sizeof(NodeID));
+	repl = (NodeID*)memory_alloc(sizeof(NodeID));
 	if (LIKELY(repl != NULL)) {
 		state->id += 1;
 		state->total_size += trienode_get_size(node)/* - sizeof(TrieNode*)*/;
@@ -78,7 +79,7 @@ pickle_dump_revert_replace(TrieNode* node, const int depth, void* extra) {
 	if (state->failed_on != node) {
 		NodeID* repl = (NodeID*)(node->fail);
 		node->fail = repl->fail;
-		memfree(repl);
+		memory_free(repl);
 
 		return 1;
 	}
@@ -94,7 +95,7 @@ pickle_dump_undo_replace(TrieNode* node, const int depth, void* extra) {
 #define state ((DumpState*)extra)
 	NodeID* repl = (NodeID*)(node->fail);
 	node->fail = repl->fail;
-	memfree(repl);
+	memory_free(repl);
 
 	return 1;
 #undef state
@@ -107,7 +108,7 @@ typedef struct PickleData {
 	uint8_t*	data;	///< array
 
 	PyObject* 	values;	///< a list (if store == STORE_ANY)
-	bool		error;	///< error occured during pickling
+	bool		error;	///< error occurred during pickling
 } PickleData;
 
 
@@ -166,7 +167,7 @@ pickle_dump_save(TrieNode* node, const int depth, void* extra) {
 }
 
 #define automaton___reduce___doc \
-	"reduce"
+	"Return pickle-able data for this Automaton instance."
 
 static PyObject*
 automaton___reduce__(PyObject* self, PyObject* args) {
@@ -201,7 +202,7 @@ automaton___reduce__(PyObject* self, PyObject* args) {
 	data.error	= false;
 	data.size	= state.total_size;
 	data.top	= 0;
-	data.data	= memalloc(data.size);
+	data.data	= memory_alloc(data.size);
 	data.values = NULL;
 
 	if (data.data == NULL) {
@@ -229,22 +230,25 @@ automaton___reduce__(PyObject* self, PyObject* args) {
 		* binary data
 		* automaton->kind
 		* automaton->store
+		* automaton->key_type
 		* automaton->version
+		* automaton->count
 		* automaton->longest_word
 		* list of values
 	*/
 
 	tuple = Py_BuildValue(
 #ifdef PY3K
-        "O(ky#iiiiiO)",
+        "O(ky#iiiiiiO)",
 #else
-        "O(ks#iiiiiO)",
+        "O(ks#iiiiiiO)",
 #endif
 		Py_TYPE(self),
 		state.id,
 		data.data, data.top,
 		automaton->kind,
 		automaton->store,
+		automaton->key_type,
 		automaton->version,
 		automaton->count,
 		automaton->longest_word,
@@ -260,8 +264,7 @@ automaton___reduce__(PyObject* self, PyObject* args) {
 		trie_traverse(automaton->root, pickle_dump_undo_replace, NULL);
 
 		// and free memory
-		if (data.data)
-			memfree(data.data);
+		xfree(data.data);
 		
 		Py_XDECREF(data.values);
 
@@ -275,8 +278,7 @@ exception:
 	trie_traverse(automaton->root, pickle_dump_undo_replace, NULL);
 
 	// and free memory
-	if (data.data)
-		memfree(data.data);
+    xfree(data.data);
 	
 	Py_XDECREF(data.values);
 	return NULL;
@@ -308,7 +310,7 @@ automaton_unpickle(
         return false;
     }
 
-	id2node = (TrieNode**)memalloc((count+1) * sizeof(TrieNode));
+	id2node = (TrieNode**)memory_alloc((count+1) * sizeof(TrieNode));
 	if (id2node == NULL) {
 		goto no_mem;
     }
@@ -318,7 +320,7 @@ automaton_unpickle(
 	ptr = data;
 	for (i=0; i < count; i++) {
 		dump = (TrieNode*)(ptr);
-		node = (TrieNode*)memalloc(sizeof(TrieNode));
+		node = (TrieNode*)memory_alloc(sizeof(TrieNode));
 		if (LIKELY(node != NULL)) {
 			node->output	= dump->output;
 			node->fail		= dump->fail;
@@ -331,7 +333,7 @@ automaton_unpickle(
 			goto no_mem;
 
 		if (node->n > 0) {
-			node->next = (TrieNode**)memalloc(node->n * sizeof(TrieNode*));
+			node->next = (TrieNode**)memory_alloc(node->n * sizeof(TrieNode*));
 			if (LIKELY(node->next != NULL)) {
                 if (UNLIKELY(ptr + sizeof(TrieNode) - sizeof(TrieNode*) > data + size)) {
                     PyErr_SetString(PyExc_ValueError, "binary data truncated (2)");
@@ -339,11 +341,12 @@ automaton_unpickle(
                 }
 
 				next = (TrieNode**)(ptr + sizeof(TrieNode) - sizeof(TrieNode*));
-				for (j=0; j < node->n; j++)
+				for (j=0; j < node->n; j++) {
 					node->next[j] = next[j];
+				}	
 			}
 			else {
-				memfree(node);
+				memory_free(node);
 				goto no_mem;
 			}
 		}
@@ -384,7 +387,7 @@ automaton_unpickle(
 
 	automaton->root  = id2node[1];
 
-	memfree(id2node);
+	memory_free(id2node);
 	return 1;
 
 no_mem:
@@ -394,14 +397,16 @@ exception:
 		for (i=1; i < id; i++) {
 			TrieNode* tmp = id2node[i];
 			if (tmp->n > 0)
-				memfree(tmp->next);
+				memory_free(tmp->next);
 
-			memfree(tmp);
+			memory_free(tmp);
 		}
 
-		memfree(id2node);
+		memory_free(id2node);
 	};
 
 	return 0;
 }
+
+// vim: noet ts=4
 

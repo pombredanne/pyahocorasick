@@ -7,7 +7,8 @@
 	returned by 'keys'/'values'/'items' methods of Automaton class.
 
 	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 #ifndef ahocorasick_AutomatonItemsIter_h_included
 #define ahocorasick_AutomatonItemsIter_h_included
@@ -37,7 +38,10 @@ typedef struct AutomatonItemsIter {
 	List		stack;			///< stack
 	ItemsType	type;			///< type of iterator (KEYS/VALUES/ITEMS)
 	TRIE_LETTER_TYPE* buffer;	///< buffer to construct key representation
-	
+#ifndef AHOCORASICK_UNICODE
+	char		*char_buffer;
+#endif
+
 	size_t pattern_length;
 	TRIE_LETTER_TYPE* pattern;	///< pattern
 	bool use_wildcard;

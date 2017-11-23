@@ -5,8 +5,9 @@
 
 	This file include all code from *.c files.
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 
 #include "common.h"
@@ -25,6 +26,13 @@
 #include "Automaton.c"
 #include "AutomatonItemsIter.c"
 #include "AutomatonSearchIter.c"
+
+
+
+#define ahocorasick_doc \
+    "pyahocorasick is a fast and memory efficient library for exact or approximate\n" \
+	"multi-pattern string search meaning that you can find multiple key strings\n" \
+	"occurrences at once in some input text."
 
 
 static
@@ -61,11 +69,11 @@ init_function(void) {
 	automaton_as_sequence.sq_contains = automaton_contains;
 
 	automaton_type.tp_as_sequence = &automaton_as_sequence;
-	
+
 #ifdef PY3K
 	module = PyModule_Create(&ahocorasick_module);
 #else
-    module = Py_InitModule("ahocorasick", ahocorasick_module_methods);
+    module = Py_InitModule3("ahocorasick", ahocorasick_module_methods, ahocorasick_doc);
 #endif
 	if (module == NULL)
 		init_return(NULL);
@@ -86,6 +94,9 @@ init_function(void) {
 	add_enum_const(STORE_LENGTH);
 	add_enum_const(STORE_INTS);
 	add_enum_const(STORE_ANY);
+
+	add_enum_const(KEY_STRING);
+	add_enum_const(KEY_SEQUENCE);
 
 	add_enum_const(MATCH_EXACT_LENGTH);
 	add_enum_const(MATCH_AT_MOST_PREFIX);

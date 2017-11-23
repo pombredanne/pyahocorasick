@@ -4,6 +4,7 @@
 	common definitions and includes
 
 	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
 	License   : public domain
 */
 
@@ -18,10 +19,6 @@
 #define DEBUG
 
 #if defined(_MSC_VER)       // Visual Studio compiler
-#   define WINDOWS
-#endif
-
-#if defined(WINDOWS)
 #   include "windows.h"
 #else
 #	include "posix.h"
@@ -40,17 +37,18 @@
 #ifdef AHOCORASICK_UNICODE
 #	ifdef Py_UNICODE_WIDE
 		// Python use UCS-4
-#		define TRIE_LETTER_TYPE	Py_UNICODE
+#		define TRIE_LETTER_TYPE	uint32_t
 #		define TRIE_LETTER_SIZE 4
 #	else
 		// Python use UCS-2
-#		define TRIE_LETTER_TYPE	Py_UNICODE
+#		define TRIE_LETTER_TYPE	uint16_t
 #		define TRIE_LETTER_SIZE 2
+#       define VARIABLE_LEN_CHARCODES 1
 #	endif
 #else
 	// only bytes are supported
-#	define TRIE_LETTER_TYPE	uint8_t
-#	define TRIE_LETTER_SIZE 1
+#	define TRIE_LETTER_TYPE	uint16_t
+#	define TRIE_LETTER_SIZE 2
 #endif
 
 

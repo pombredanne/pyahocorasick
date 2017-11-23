@@ -3,15 +3,16 @@
 
 	Trie implementation
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 
 #include "trienode.h"
 
 static TrieNode*
 trienode_new(const TRIE_LETTER_TYPE letter, const char eow) {
-	TrieNode* node = (TrieNode*)memalloc(sizeof(TrieNode));
+	TrieNode* node = (TrieNode*)memory_alloc(sizeof(TrieNode));
 	if (node) {
 		node->output.integer = 0;
 		node->output.object = NULL;
@@ -20,7 +21,6 @@ trienode_new(const TRIE_LETTER_TYPE letter, const char eow) {
 		node->n		= 0;
 		node->letter	= letter;
 		node->eow	    = eow;
-		node->pickle	= 0;
 		node->next	= NULL;
 	}
 

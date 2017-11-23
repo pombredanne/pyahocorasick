@@ -3,8 +3,9 @@
 	
 	AutomatonItemsIter implementation
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 #include "AutomatonItemsIter.h"
 
@@ -42,25 +43,31 @@ automaton_items_iter_new(
 	iter->state	= NULL;
 	iter->type = ITER_KEYS;
 	iter->buffer = NULL;
+#ifndef AHOCORASICK_UNICODE
+	iter->char_buffer = NULL;
+#endif
 	iter->pattern = NULL;
 	iter->use_wildcard = use_wildcard;
 	iter->wildcard = wildcard;
 	iter->matchtype = matchtype;
 	list_init(&iter->stack);
 
-	iter->buffer = memalloc((automaton->longest_word + 1) * TRIE_LETTER_SIZE);
+	iter->buffer = memory_alloc((automaton->longest_word + 1) * TRIE_LETTER_SIZE);
 	if (iter->buffer == NULL) {
-		PyObject_Del((PyObject*)iter);
-		PyErr_NoMemory();
-		return NULL;
+		goto no_memory;
 	}
-	
+
+#ifndef AHOCORASICK_UNICODE
+	iter->char_buffer = memory_alloc(automaton->longest_word + 1);
+	if (iter->char_buffer == NULL) {
+		goto no_memory;
+	}
+#endif
+
 	if (word) {
-		iter->pattern = (TRIE_LETTER_TYPE*)memalloc(wordlen * TRIE_LETTER_SIZE);
+		iter->pattern = (TRIE_LETTER_TYPE*)memory_alloc(wordlen * TRIE_LETTER_SIZE);
 		if (UNLIKELY(iter->pattern == NULL)) {
-			PyObject_Del((PyObject*)iter);
-			PyErr_NoMemory();
-			return NULL;
+			goto no_memory;
 		}
 		else {
 			iter->pattern_length = wordlen;
@@ -72,9 +79,7 @@ automaton_items_iter_new(
 	
 	new_item = (StackItem*)list_item_new(sizeof(StackItem));
 	if (UNLIKELY(new_item == NULL)) {
-		PyObject_Del((PyObject*)iter);
-		PyErr_NoMemory();
-		return NULL;
+		goto no_memory;
 	}
 
 	new_item->node = automaton->root;
@@ -83,6 +88,16 @@ automaton_items_iter_new(
 
 	Py_INCREF((PyObject*)iter->automaton);
 	return (PyObject*)iter;
+
+no_memory:
+	xfree(iter->buffer);
+	xfree(iter->pattern);
+#ifndef AHOCORASICK_UNICODE
+	xfree(iter->char_buffer);
+#endif
+	PyObject_Del((PyObject*)iter);
+	PyErr_NoMemory();
+	return NULL;
 }
 
 
@@ -90,11 +105,8 @@ automaton_items_iter_new(
 
 static void
 automaton_items_iter_del(PyObject* self) {
-	if (iter->buffer)
-		memfree(iter->buffer);
-
-	if (iter->pattern)
-		memfree(iter->pattern);
+	xfree(iter->buffer);
+	xfree(iter->pattern);
 	
 	list_delete(&iter->stack);
 	Py_DECREF(iter->automaton);
@@ -116,7 +128,7 @@ automaton_items_iter_next(PyObject* self) {
 	bool output;
 
 	if (UNLIKELY(iter->version != iter->automaton->version)) {
-		PyErr_SetString(PyExc_ValueError, "underlaying automaton has changed, iterator is not valid anymore");
+		PyErr_SetString(PyExc_ValueError, "The underlying automaton has changed: this iterator is no longer valid.");
 		return NULL;
 	}
 
@@ -183,7 +195,9 @@ automaton_items_iter_next(PyObject* self) {
 		if (iter->type != ITER_VALUES)
 			// update keys when needed
 			iter->buffer[item->depth] = iter->state->letter;
-
+#ifndef AHOCORASICK_UNICODE
+			iter->char_buffer[item->depth] = (char)iter->state->letter;
+#endif
 		if (output and iter->state->eow) {
 			PyObject* val;
 
@@ -192,7 +206,7 @@ automaton_items_iter_next(PyObject* self) {
 #ifdef AHOCORASICK_UNICODE
 					return PyUnicode_FromUnicode(iter->buffer + 1, item->depth);
 #else
-					return PyBytes_FromStringAndSize((char*)(iter->buffer + 1), item->depth);
+					return PyBytes_FromStringAndSize(iter->char_buffer + 1, item->depth);
 #endif
 
 				case ITER_VALUES:
@@ -207,7 +221,7 @@ automaton_items_iter_next(PyObject* self) {
 							return Py_BuildValue("i", iter->state->output.integer);
 
 						default:
-							PyErr_SetString(PyExc_SystemError, "wrong attribute 'store'");
+							PyErr_SetString(PyExc_SystemError, "Incorrect 'store' attribute.");
 							return NULL;
 					}
 
@@ -219,14 +233,13 @@ automaton_items_iter_next(PyObject* self) {
 							return Py_BuildValue(
 #ifdef PY3K
     #ifdef AHOCORASICK_UNICODE
-								"(u#O)",
+								"(u#O)", /*key*/ iter->buffer + 1, item->depth,
     #else
-								"(y#O)",
+								"(y#O)", /*key*/ iter->buffer + 1, item->depth,
     #endif
 #else
-                                "(s#O)",
+                                "(s#O)", /*key*/ iter->char_buffer + 1, item->depth,
 #endif
-								/*key*/ iter->buffer + 1, item->depth,
 								/*val*/ iter->state->output.object
 							);
 
@@ -235,19 +248,18 @@ automaton_items_iter_next(PyObject* self) {
 							return Py_BuildValue(
 #ifdef PY3K
     #ifdef AHOCORASICK_UNICODE
-								"(u#i)",
+								"(u#i)", /*key*/ iter->buffer + 1, item->depth,
     #else
-								"(y#i)",
+								"(y#i)", /*key*/ iter->buffer + 1, item->depth,
     #endif
 #else
-                                "(s#i)",
+                                "(s#i)", /*key*/ iter->char_buffer + 1, item->depth,
 #endif
-								/*key*/ iter->buffer + 1, item->depth,
 								/*val*/ iter->state->output.integer
 							);
 						
 						default:
-							PyErr_SetString(PyExc_SystemError, "wrong attribute 'store'");
+							PyErr_SetString(PyExc_SystemError, "Incorrect 'store' attribute.");
 							return NULL;
 					} // switch
 			}

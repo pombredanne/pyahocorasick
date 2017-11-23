@@ -6,8 +6,9 @@
 	automaton. Object of this class is returnd by 'iter' method
 	of Automaton class.
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 #ifndef ahocorasick_AutomatonSearchIter_h_included
 #define ahocorasick_AutomatonSearchIter_h_included
@@ -15,19 +16,29 @@
 #include "common.h"
 #include "Automaton.h"
 
+#ifdef VARIABLE_LEN_CHARCODES
+typedef enum {
+    pyaho_UCS2_Any,
+    pyaho_UCS2_LowSurrogate
+} UCS2ExpectedChar;
+#endif
+
 typedef struct AutomatonSearchIter {
 	PyObject_HEAD
 
 	Automaton*	automaton;
 	int			version;	///< automaton version
-	PyObject*	object;		///< unicode or buffer
-	TRIE_LETTER_TYPE* data;	///< Py_UNICODE or char*
+	struct Input input;		///< input string
 	TrieNode*	state;		///< current state of automaton
 	TrieNode*	output;		///< current node, i.e. yielded value
 	
 	int			index;		///< current index in data
 	int			shift;		///< shift + index => output index
 	int			end;		///< end index
+#ifdef VARIABLE_LEN_CHARCODES
+    int         position;       ///< position in string
+    UCS2ExpectedChar expected;
+#endif
 } AutomatonSearchIter;
 
 

@@ -10,6 +10,7 @@
 	* get first/last
 
 	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
 	License   : public domain
 */
 #ifndef ahocorasick_slist_h_included
@@ -18,11 +19,11 @@
 #include "common.h"
 
 /** base structure for list */
-#define LISTITEM_data struct ListItem* __next;
+#define LISTITEM_data struct ListItem* __next
 
 /** list item node */
 typedef struct ListItem {
-	LISTITEM_data
+	LISTITEM_data;
 } ListItem;
 
 /** Create new item */

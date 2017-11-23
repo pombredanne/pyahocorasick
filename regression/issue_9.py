@@ -1,10 +1,25 @@
-import ahocorasick
-import sys
+# -*- coding: utf-8 -*-
+"""
+    Aho-Corasick string search algorithm.
+
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : public domain
+"""
+
 import os
+import sys
+
+import ahocorasick
 
 ac = ahocorasick.Automaton()
 ac.add_word('SSSSS', 1)
 ac.make_automaton()
+
+try:
+    range = xrange # for Py2
+except NameError:
+    pass
 
 def get_memory_usage():
     # Linux only
@@ -25,7 +40,7 @@ def get_memory_usage():
 
 def test():
     with open('README.rst', 'r') as f:
-        data = f.read()[:1024*2]
+        data = f.read()[:1024 * 2]
 
     for loop in range(1000):
         for start in range(0, len(data) - 20):
@@ -33,7 +48,7 @@ def test():
 
 
 if __name__ == '__main__':
-    
+
     before = get_memory_usage()
     test()
     after = get_memory_usage()

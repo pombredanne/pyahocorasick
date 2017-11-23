@@ -3,8 +3,9 @@
 	
 	Trie node declarations
 
-	Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
-	License   : 3-clauses BSD (see LICENSE)
+    Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
+    WWW       : http://0x80.pl
+    License   : BSD-3-Clause (see LICENSE)
 */
 
 #ifndef ahocorasick_trienode_h_included
@@ -26,7 +27,6 @@ typedef struct TrieNode {
 	uint32_t			n;		///< length of next
 #endif
 	uint8_t  			eow:1;	    ///< end of word marker
-	uint8_t  			pickle:7;	///< used by pickling mechanism to indicate when fail point to temporary lookup field (for detail see Automaton_pickle.c)
 	TRIE_LETTER_TYPE	letter;	///< incoming edge label
 
 	struct TrieNode**	next;	///< table of pointers
