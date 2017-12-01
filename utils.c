@@ -40,13 +40,15 @@ void xfree(void* ptr) {
 static PyObject*
 pymod_get_string(PyObject* obj, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
 
+#ifdef INPUT_KEEPS_COPY
 	ssize_t i;
 	char* bytes;
+#endif
 
 #ifdef PY3K
 #   ifdef AHOCORASICK_UNICODE
         if (PyUnicode_Check(obj)) {
-            *word = PyUnicode_AS_UNICODE(obj);
+            *word = (TRIE_LETTER_TYPE*)(PyUnicode_AS_UNICODE(obj));
             *wordlen = PyUnicode_GET_SIZE(obj);
             Py_INCREF(obj);
             return obj;
@@ -107,18 +109,6 @@ pymod_get_string(PyObject* obj, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
 }
 
 
-static PyObject*
-pymod_get_string_from_tuple(PyObject* tuple, int index, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
-	PyObject* obj;
-
-	obj = PyTuple_GetItem(tuple, index);
-	if (obj)
-		return pymod_get_string(obj, word, wordlen);
-	else
-		return NULL;
-}
-
-
 static bool
 __read_sequence__from_tuple(PyObject* obj, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
 	Py_ssize_t i;
@@ -162,18 +152,6 @@ pymod_get_sequence(PyObject* obj, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
 		PyErr_Format(PyExc_TypeError, "argument is not a supported sequence type");
 		return false;
 	}
-}
-
-
-static bool
-pymod_get_sequence_from_tuple(PyObject* tuple, int index, TRIE_LETTER_TYPE** word, ssize_t* wordlen) {
-	PyObject* obj;
-
-	obj = PyTuple_GetItem(tuple, index);
-	if (obj)
-		return pymod_get_sequence(obj, word, wordlen);
-	else
-		return false;
 }
 
 
