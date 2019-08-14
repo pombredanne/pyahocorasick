@@ -1,5 +1,4 @@
-build/
-dist/
+# patterns
 *.pyc
 *.pyd
 *.dot
@@ -7,6 +6,15 @@ dist/
 *.so
 *.sh
 *.o
+
+# files
 MANIFEST
+!runtest.sh
+tags
+
+# dirs
+build/
+dist/
 /pyahocorasick.egg-info/
 /tmp/
+coverage/

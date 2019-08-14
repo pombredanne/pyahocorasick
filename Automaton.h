@@ -1,7 +1,7 @@
 /*
-	This is part of pyahocorasick Python module.
-	
-	Automaton class methods
+    This is part of pyahocorasick Python module.
+
+    Automaton class methods
 
     Author    : Wojciech Muła, wojciech_mula@poczta.onet.pl
     WWW       : http://0x80.pl
@@ -14,69 +14,83 @@
 #include "trie.h"
 
 typedef enum {
-	EMPTY       = 0,
-	TRIE        = 1,
-	AHOCORASICK = 2
+    EMPTY       = 0,
+    TRIE        = 1,
+    AHOCORASICK = 2
 } AutomatonKind;
 
 
+static bool
+check_kind(const int kind);
+
+
 typedef enum {
-	STORE_INTS   = 10,
-	STORE_LENGTH = 20,
-	STORE_ANY    = 30
+    STORE_INTS   = 10,
+    STORE_LENGTH = 20,
+    STORE_ANY    = 30
 } KeysStore;
 
 
+static bool
+check_store(const int store);
+
+
 typedef enum {
-	KEY_STRING   = 100,
+    KEY_STRING   = 100,
     KEY_SEQUENCE = 200
 } KeyType;
 
 
+static bool
+check_key_type(const int key_type);
+
+
 struct Input {
-	Py_ssize_t 			wordlen;
-	TRIE_LETTER_TYPE* 	word;
-	PyObject* 			py_word;
+    Py_ssize_t          wordlen;
+    TRIE_LETTER_TYPE*   word;
+    PyObject*           py_word;
+    bool is_copy;
 };
 
 
 typedef struct AutomatonStatistics {
-	int			version;
+    int         version;
 
-	ssize_t		nodes_count;		///< total number of nodes
-	ssize_t		words_count;		///< len(automaton)
-	ssize_t		longest_word;		///< longest word
-	ssize_t		links_count;		///< links count
-	ssize_t		sizeof_node;		///< size of single node (a C structure)
-	ssize_t		total_size;			///< total size in bytes
+    ssize_t     nodes_count;        ///< total number of nodes
+    ssize_t     words_count;        ///< len(automaton)
+    ssize_t     longest_word;       ///< longest word
+    ssize_t     links_count;        ///< links count
+    ssize_t     sizeof_node;        ///< size of single node (a C structure)
+    ssize_t     total_size;         ///< total size in bytes
 } AutomatonStatistics;
 
 
 typedef struct Automaton {
-	PyObject_HEAD
+    PyObject_HEAD
 
-	AutomatonKind	kind;	///< current kind of automaton
-	KeysStore		store;	///< type of values: copy of string, bare integer, python  object
+    AutomatonKind   kind;   ///< current kind of automaton
+    KeysStore       store;  ///< type of values: copy of string, bare integer, python  object
     KeyType         key_type;    ///< type of keys: strings or integer sequences
-	int				count;	///< number of distinct words
-	int				longest_word;	///< length of the longest word
-	TrieNode*		root;	///< root of a trie
+    int             count;  ///< number of distinct words
+    int             longest_word;   ///< length of the longest word
+    TrieNode*       root;   ///< root of a trie
 
-	int				version;	///< current version of automaton, incremented by add_word, clean and make_automaton; used to lazy invalidate iterators
+    int             version;    ///< current version of automaton, incremented by add_word, clean and make_automaton; used to lazy invalidate iterators
 
-	AutomatonStatistics	stats;	///< statistics
+    AutomatonStatistics stats;  ///< statistics
 } Automaton;
 
 /*------------------------------------------------------------------------*/
 
 static bool
 automaton_unpickle(
-	Automaton* automaton,
-	const size_t count,
-	uint8_t* data,
-	const size_t size,
-	PyObject* values
+    Automaton* automaton,
+    PyObject* bytes_list,
+    PyObject* values
 );
+
+static PyObject*
+automaton_create(void);
 
 /* __init__ */
 static PyObject*
@@ -136,7 +150,7 @@ automaton_items(PyObject* self, PyObject* args);
 
 /* iter() */
 static PyObject*
-automaton_iter(PyObject* self, PyObject* args);
+automaton_iter(PyObject* self, PyObject* args, PyObject* keywds);
 
 /* get_stats() */
 static PyObject*

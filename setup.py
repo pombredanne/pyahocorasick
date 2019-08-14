@@ -43,7 +43,7 @@ else:
 module = Extension(
     'ahocorasick',
     sources=[
-        'pyahocorasick.c'
+        'pyahocorasick.c',
     ],
     define_macros=macros,
     depends=[
@@ -62,13 +62,31 @@ module = Extension(
         'trienode.c',
         'trienode.h',
         'msinttypes/stdint.h',
+        'src/inline_doc.h',
+        'src/pickle/pickle.h',
+        'src/pickle/pickle_data.h',
+        'src/pickle/pickle_data.c',
+        'src/custompickle/custompickle.h',
+        'src/custompickle/custompickle.c',
+        'src/custompickle/pyhelpers.h',
+        'src/custompickle/pyhelpers.c',
+        'src/custompickle/save/automaton_save.h',
+        'src/custompickle/save/automaton_save.c',
+        'src/custompickle/save/savebuffer.h',
+        'src/custompickle/save/savebuffer.c',
+        'src/custompickle/load/module_automaton_load.h',
+        'src/custompickle/load/module_automaton_load.c',
+        'src/custompickle/load/loadbuffer.h',
+        'src/custompickle/load/loadbuffer.c',
+        'src/pycallfault/pycallfault.h',
+        'src/pycallfault/pycallfault.c',
     ],
 )
 
 
 setup(
     name='pyahocorasick',
-    version='1.1.7.dev1',
+    version='1.4.0',
     ext_modules=[module],
 
     description=(
@@ -87,6 +105,7 @@ setup(
     platforms=['Linux', 'MacOSX', 'Windows'],
     license=' BSD-3-Clause and Public-Domain',
     long_description=get_long_description(),
+    long_description_content_type="text/x-rst",
     keywords=[
         'aho-corasick',
         'trie',

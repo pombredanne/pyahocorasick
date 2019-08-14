@@ -1,5 +1,5 @@
 .SUFFIXES:
-.PHONY: test clean
+.PHONY: test clean valgrind
 
 export PYTHONPATH := .:$(PYTHONPATH):$(PATH)
 
@@ -48,6 +48,19 @@ stamp/regression_py3: stamp/unittests_py3
 
 benchmark: benchmarks/benchmark.py stamp/build_py2
 	python2 $^
+
+devbuild2:
+	python2 setup.py build_ext --inplace
+
+devbuild3:
+	python3 setup.py build_ext --inplace
+
+valgrind:
+	python -c "import sys;print(sys.version)"
+	valgrind --leak-check=full --track-origins=yes --log-file=valgrind.log python unittests.py
+
+pip-release:
+	python setup.py sdist upload
 
 clean:
 	rm -f stamp/*

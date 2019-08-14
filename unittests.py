@@ -10,9 +10,14 @@
 """
 
 import sys
+import os
 import unittest
-
 import ahocorasick
+
+try:
+    import _pickle
+except ImportError:
+    _pickle = None
 
 
 if ahocorasick.unicode:
@@ -24,7 +29,35 @@ else:
         conv = lambda x: x
 
 
-class TestTrieStorePyObjectsBase(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    def __init__(self, *args):
+        super(TestCase, self).__init__(*args)
+
+        if not hasattr(self, 'assertRaisesRegex'):
+            # fixup for Py2
+            self.assertRaisesRegex = self.assertRaisesRegexp
+
+
+    def assertEmpty(self, collection):
+        self.assertEqual(0, len(collection))
+
+
+    def assertNotEmpty(self, collection):
+        self.assertGreater(len(collection), 0)
+
+
+class TestConstructor(TestCase):
+    def test_constructor_wrong_store(self):
+        with self.assertRaisesRegex(ValueError, "store value must be one of.*"):
+            ahocorasick.Automaton(-42)
+
+
+    def test_constructor_wrong_key_type(self):
+        with self.assertRaisesRegex(ValueError, "key_type must have value.*"):
+            ahocorasick.Automaton(ahocorasick.STORE_ANY, -42)
+
+
+class TestTrieStorePyObjectsBase(TestCase):
     def setUp(self):
         self.A = ahocorasick.Automaton();
         self.words = "word python aho corasick \x00\x00\x00".split()
@@ -148,6 +181,7 @@ class TestTrieMethods(TestTrieStorePyObjectsBase):
             with self.assertRaises(KeyError):
                 A.get(conv(w))
 
+
     def test_get_from_an_empty_automaton(self):
         A = ahocorasick.Automaton()
 
@@ -203,8 +237,185 @@ class TestTrieMethods(TestTrieStorePyObjectsBase):
                 self.assertEqual(s[key], 0)
 
 
+class TestTrieRemoveWord(TestTrieStorePyObjectsBase):
+
+    def test_remove_word_from_empty_trie(self):
+        self.assertFalse(self.A.remove_word("test"))
+
+
+    def test_remove_existing_word(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_len = len(A)
+        for w in words:
+            self.assertTrue(self.A.remove_word(w))
+            self.assertFalse(self.A.exists(w))
+            expected_len -= 1
+            self.assertEqual(expected_len, len(A))
+
+
+    def test_remove_inexisting_word(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_len = len(A)
+        for w in ["cat", "dog", "tree"]:
+            self.assertFalse(self.A.exists(w))
+            self.assertFalse(self.A.remove_word(w))
+            self.assertEqual(expected_len, len(A))
+
+
+    def test_remove__case1(self):
+        words = ["k", "ki", "kit", "kitt", "kitte", "kitten"
+                                 , "kitc", "kitch", "kitche", "kitchen"]
+
+        A = self.A
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_set = set(words)
+        for w in words:
+            self.assertTrue(self.A.remove_word(w))
+            expected_set.discard(w)
+            current_set = set(A.keys())
+            self.assertEqual(expected_set, current_set)
+            self.assertEqual(len(expected_set), len(A))
+
+
+    def test_remove__case2(self):
+        words = ["k", "ki", "kit", "kitt", "kitte", "kitten"
+                                 , "kitc", "kitch", "kitche", "kitchen"]
+
+        A = self.A
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_set = set(words)
+        for w in reversed(words):
+            self.assertTrue(self.A.remove_word(w))
+            expected_set.discard(w)
+            current_set = set(A.keys())
+            self.assertEqual(expected_set, current_set)
+            self.assertEqual(len(expected_set), len(A))
+
+
+    def test_remove_word_changes_type_of_automaton(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        A.make_automaton()
+        self.assertEqual(ahocorasick.AHOCORASICK, A.kind)
+
+        self.assertFalse(A.remove_word("inexisting"))
+        self.assertEqual(ahocorasick.AHOCORASICK, A.kind)
+
+        self.assertTrue(A.remove_word("hi"))
+        self.assertEqual(ahocorasick.TRIE, A.kind)
+
+
+class TestTriePop(TestTrieStorePyObjectsBase):
+
+    def test_pop_from_empty_trie(self):
+        with self.assertRaises(KeyError):
+            self.A.pop("test")
+
+
+    def test_pop_existing_word(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_len = len(A)
+        for w in words:
+            self.assertEqual(w, self.A.pop(w))
+            self.assertFalse(self.A.exists(w))
+            expected_len -= 1
+            self.assertEqual(expected_len, len(A))
+
+
+    def test_pop_inexisting_word(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_len = len(A)
+        for w in ["cat", "dog", "tree"]:
+            with self.assertRaises(KeyError):
+                self.A.pop(w)
+
+            self.assertEqual(expected_len, len(A))
+
+
+    def test_pop__case1(self):
+        words = ["k", "ki", "kit", "kitt", "kitte", "kitten"
+                                 , "kitc", "kitch", "kitche", "kitchen"]
+
+        A = self.A
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_set = set(words)
+        for w in words:
+            self.assertEqual(w, self.A.pop(w))
+            expected_set.discard(w)
+            current_set = set(A.keys())
+            self.assertEqual(expected_set, current_set)
+            self.assertEqual(len(expected_set), len(A))
+
+
+    def test_pop__case2(self):
+        words = ["k", "ki", "kit", "kitt", "kitte", "kitten"
+                                 , "kitc", "kitch", "kitche", "kitchen"]
+
+        A = self.A
+        for w in words:
+            A.add_word(conv(w), w)
+
+        expected_set = set(words)
+        for w in reversed(words):
+            self.assertEqual(w, self.A.pop(w))
+            expected_set.discard(w)
+            current_set = set(A.keys())
+            self.assertEqual(expected_set, current_set)
+            self.assertEqual(len(expected_set), len(A))
+
+
+    def test_pop_changes_type_of_automaton(self):
+        A = self.A
+
+        words = ["he", "her", "hi", "him", "his"]
+        for w in words:
+            A.add_word(conv(w), w)
+
+        A.make_automaton()
+        self.assertEqual(ahocorasick.AHOCORASICK, A.kind)
+
+        with self.assertRaises(KeyError):
+            A.pop("inexisting")
+
+        self.assertEqual(ahocorasick.AHOCORASICK, A.kind)
+
+        self.assertEqual("hi", A.pop("hi"))
+        self.assertEqual(ahocorasick.TRIE, A.kind)
+
+
 class TestTrieIterators(TestTrieStorePyObjectsBase):
     "Test iterators walking over trie"
+
 
     def test_iter(self):
         A = self.A
@@ -249,7 +460,6 @@ class TestTrieIterators(TestTrieStorePyObjectsBase):
         L = [x for x in A.items()]
         self.assertEqual(len(L), len(I))
         self.assertEqual(set(L), set(I))
-
 
 
     def test_items_with_prefix_valid(self):
@@ -306,6 +516,16 @@ class TestTrieIterators(TestTrieStorePyObjectsBase):
         self.assertEqual(set(I), set(L))
 
 
+    def test_items_wrong_wildcrard(self):
+        with self.assertRaisesRegex(ValueError, "Wildcard must be a single character.*"):
+            self.A.keys(conv("anything"), conv("??"))
+
+
+    def test_items_wrong_match_enum(self):
+        with self.assertRaisesRegex(ValueError, "The optional how third argument must be one of"):
+            self.A.keys(conv("anything"), conv("?"), -42)
+
+
 class TestTrieIteratorsInvalidate(TestTrieStorePyObjectsBase):
     "Test invalidating iterator when trie is changed"
 
@@ -339,7 +559,7 @@ class TestTrieIteratorsInvalidate(TestTrieStorePyObjectsBase):
         self.helper(self.A.items)
 
 
-class TestAutomatonBase(unittest.TestCase):
+class TestAutomatonBase(TestCase):
     def setUp(self):
         self.A = ahocorasick.Automaton();
         self.words = "he her hers she".split()
@@ -359,6 +579,8 @@ class TestAutomatonBase(unittest.TestCase):
     def add_words(self):
         for word in self.words:
             self.A.add_word(conv(word), word)
+
+        return self.A
 
 
     def add_words_and_make_automaton(self):
@@ -451,6 +673,65 @@ class TestAutomatonSearch(TestAutomatonBase):
         self.assertEqual(L, C)
 
 
+    def test_find_all__not_a_callable_object(self):
+        A = self.add_words_and_make_automaton()
+
+        with self.assertRaisesRegex(TypeError, "The callback argument must be a callable such as a function."):
+            A.find_all(conv(self.string), None)
+
+
+    def test_find_all__wrong_range__case_1(self):
+        A = self.add_words_and_make_automaton()
+
+        L = []
+        def callback(index, word):
+            L.append((index, word))
+
+        with self.assertRaisesRegex(IndexError, "end index not in range 0..12"):
+            A.find_all(conv(self.string), callback, 0, len(self.string) + 5)
+
+
+    def test_find_all__wrong_range__case_2(self):
+        A = self.add_words_and_make_automaton()
+
+        L = []
+        def callback(index, word):
+            L.append((index, word))
+
+        with self.assertRaisesRegex(IndexError, "start index not in range 0..12"):
+            A.find_all(conv(self.string), callback, -len(self.string) - 1, 3)
+
+
+    def test_find_all__end_index_not_given(self):
+        A = self.add_words_and_make_automaton()
+
+        L = []
+        def callback(index, word):
+            L.append((index, word))
+
+        A.find_all(conv(self.string), callback, 0)
+
+
+    def test_find_all__start_is_negative(self):
+        A = self.add_words_and_make_automaton()
+
+        L = []
+        def callback(index, word):
+            L.append((index, word))
+
+        A.find_all(conv(self.string), callback, -3, 4)
+
+
+    def test_find_all__end_is_negative(self):
+        A = self.add_words_and_make_automaton()
+
+        L = []
+        def callback(index, word):
+            L.append((index, word))
+
+        A.find_all(conv(self.string), callback, 0, -1)
+
+
 class TestAutomatonIterSearch(TestAutomatonBase):
     "Test searching using constructed automaton (iterator)"
 
@@ -498,13 +779,46 @@ class TestAutomatonIterSearch(TestAutomatonBase):
         A = self.add_words_and_make_automaton()
         parts = "_sh erhe rshe _".split()
 
+        expected = {
+            '_sh'   : [],
+            'erhe'  : [(3, 'she'),
+                       (3, 'he'),
+                       (4, 'her'),
+                       (6, 'he')],
+            'rshe'  : [(7, 'her'),
+                       (8, 'hers'),
+                       (10, 'she'),
+                       (10, 'he')],
+             '_'    : []
+        }
+
         it = A.iter(conv(""))
-        print()
+        result = {}
         for part in parts:
             it.set(conv(part))
-            print(part, ":")
+            result[part] = []
             for item in it:
-                print(item)
+                result[part].append(item)
+
+        self.assertEqual(expected, result)
+
+    def test_iter_set__with_reset(self):
+        A = self.add_words_and_make_automaton()
+
+        expected = {
+            'he'    : [(1, 'he')],
+            'she'   : [(2, 'she'), (2, 'he')],
+        }
+
+        it = A.iter(conv(""))
+        result = {}
+        for part in ["he", "she"]:
+            it.set(conv(part), True)
+            result[part] = []
+            for item in it:
+                result[part].append(item)
+
+        self.assertEqual(expected, result)
 
 
     def test_iter_compare_with_find_all(self):
@@ -523,6 +837,66 @@ class TestAutomatonIterSearch(TestAutomatonBase):
             C.append((index, word))
 
         self.assertEqual(L, C)
+
+
+    def test_iter_wrong_argument_type(self):
+        A = self.add_words_and_make_automaton()
+
+        with self.assertRaisesRegex(TypeError, "string required"):
+            A.iter(None)
+
+
+class TestAutomatonIterSearchWithIgnoreWhiteSpace(TestAutomatonBase):
+    "Test searching using constructed automaton (iterator)"
+
+    def setUp(self):
+        self.A = ahocorasick.Automaton()
+        self.words = "he her hers she".split()
+        self.string = "_sh e rher she_"
+        self.correct_positons = [
+            (4, "she"),
+            (4, "he"),
+            (6, "her"),
+            (8, "he"),
+            (9, "her"),
+            (11, "hers"),
+            (13, "she"),
+            (13, "he")
+        ]
+        self.correct_positons_start_12 = [
+            (13, "he")
+        ]
+
+
+    def test_iter1(self):
+        self.add_words_and_make_automaton()
+        A = self.A
+        self.assertEqual(A.kind, ahocorasick.AHOCORASICK)
+
+        L = []
+        for index, word in A.iter(conv(self.string), ignore_white_space=True):
+            L.append((index, word))
+        self.assertEqual(L, self.correct_positons)
+
+
+    def test_iter2(self):
+        self.add_words_and_make_automaton()
+        A = self.A
+        self.assertEqual(A.kind, ahocorasick.AHOCORASICK)
+
+        L = []
+        for index, word in A.iter(conv(self.string), ignore_white_space=True, start=12):
+            L.append((index, word))
+        self.assertEqual(L, self.correct_positons_start_12)
+
+
+    def test_wrong_keyword(self):
+        self.add_words_and_make_automaton()
+        A = self.A
+        self.assertEqual(A.kind, ahocorasick.AHOCORASICK)
+
+        with self.assertRaises(TypeError):
+            A.iter(conv(self.string), ignore_white_space2=True)
 
 
 class TestAutomatonIterInvalidate(TestAutomatonBase):
@@ -603,7 +977,6 @@ class TestPickle(TestAutomatonBase):
 
 
     def test_empty(self):
-        # sample Russian words from issue #8
         import pickle
 
         A = ahocorasick.Automaton()
@@ -627,7 +1000,7 @@ class TestPickle(TestAutomatonBase):
             self.assertEqual(AV, BV)
 
 
-class TestPickleStoreInts(unittest.TestCase):
+class TestPickleStoreInts(TestCase):
     "Test pickling/unpickling for automaton of kind STORE_INTS/STORE_LEN"
 
 
@@ -666,7 +1039,7 @@ class TestPickleStoreInts(unittest.TestCase):
             self.assertEqual(AV, BV)
 
 
-class TestTrieStoreInts(unittest.TestCase):
+class TestTrieStoreInts(TestCase):
     "Test storing plain ints as values (instead of python objects)"
 
     def setUp(self):
@@ -741,7 +1114,7 @@ class TestTrieStoreInts(unittest.TestCase):
         self.assertEqual(C, L)
 
 
-class TestTrieStoreLengths(unittest.TestCase):
+class TestTrieStoreLengths(TestCase):
     """Test storing plain ints -- length of words --- as values
     (instead of python objects)"""
 
@@ -761,7 +1134,7 @@ class TestTrieStoreLengths(unittest.TestCase):
             self.assertEqual(len(key), value)
 
 
-class TestSizeOf(unittest.TestCase):
+class TestSizeOf(TestCase):
     def setUp(self):
         self.A = ahocorasick.Automaton();
         words = "word python aho corasick tree bark branch root".split()
@@ -803,9 +1176,10 @@ class TestBugAutomatonSearch(TestAutomatonBase):
         self.assertEqual([(15, 'GT-C3303')], res)
 
 
-class TestIntSequenceBase(unittest.TestCase):
+class TestIntSequenceBase(TestCase):
     def setUp(self):
         self.A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_SEQUENCE);
+
 
 class TestIntSequence__TrieMethods(TestIntSequenceBase):
 
@@ -872,7 +1246,13 @@ class TestIntSequence__TrieMethods(TestIntSequenceBase):
         with self.assertRaises(ValueError) as e:
             A.add_word((1, -1, 12), "foo")
 
-        self.assertEqual(str(e.exception), "item #1: value -1 outside range [0..65535]")
+        errmsg = str(e.exception)
+        msgs = [
+            "item #1: value -1 outside range [0..65535]",
+            "item #1: value -1 outside range [0..4294967295]",
+        ]
+
+        self.assertIn(errmsg, msgs)
 
 
     def test_add__case_8__wrong_value(self):
@@ -885,10 +1265,13 @@ class TestIntSequence__TrieMethods(TestIntSequenceBase):
         # but the type remains the same.
 
         errmsg = str(e.exception)
-        msg1 = "item #0: value 4398046511104 outside range [0..65535]"
-        msg2 = "item #0 is not a number"
+        msgs = [
+            "item #0: value 4398046511104 outside range [0..65535]",
+            "item #0: value 4398046511104 outside range [0..4294967295]",
+            "item #0 is not a number",
+        ]
 
-        self.assertIn(errmsg, [msg1, msg2])
+        self.assertIn(errmsg, msgs)
 
 
     def test_match(self):
@@ -907,8 +1290,79 @@ class TestIntSequence__TrieMethods(TestIntSequenceBase):
         self.assertEqual(A.longest_prefix((1, 2, 3, 111, 1111, 11111)), 3);
         self.assertEqual(A.longest_prefix((111, 1111, 11111)), 0);
 
+    def test_iter1(self):
+        A = self.A
 
-class TestIssue53(unittest.TestCase):
+        A.add_word((1, 2, 3), "foo")
+        A.add_word((2, 3, 4, 5), "bar")
+        A.add_word((2, 3, 5), "baz")
+        A.make_automaton()
+
+        L = [(index, value) for index, value in A.iter((1, 2, 3, 5))]
+
+        self.assertEqual(L, [
+            (2, "foo"),
+            (3, "baz"),
+        ])
+
+    def test_iter2(self):
+        A = self.A
+
+        A.add_word((43, 89), (43, 89))
+        A.add_word((43, 89, 64), (43, 89, 64))
+        A.add_word((89, 64), (89, 64))
+        A.add_word((89, 100), (89, 100))
+        A.make_automaton()
+
+        L = [
+            (index, value)
+            for index, value in
+            A.iter((80, 80, 43, 89, 90, 89, 64, 100, 43, 89, 100))
+        ]
+
+        self.assertEqual(L, [
+            (3, (43, 89)),
+            (6, (89, 64)),
+            (9, (43, 89)),
+            (10, (89, 100)),
+        ])
+
+
+    def test_iter_wrong_argument_type(self):
+        A = self.A
+        A.add_word((89, 100), (89, 100))
+        A.make_automaton()
+
+        with self.assertRaisesRegex(TypeError, "tuple required"):
+            self.A.iter(None)
+
+
+class TestDump(TestAutomatonBase):
+    def test_dump_empty(self):
+        self.assertIsNone(self.A.dump())
+
+
+    def test_dump_trie(self):
+        self.add_words()
+        ret = self.A.dump()
+
+        self.assertEqual(3, len(ret))
+        self.assertNotEmpty(ret[0])     # list of nodes
+        self.assertNotEmpty(ret[1])     # list of edges
+        self.assertEmpty(ret[2])        # list of fail links -- empty, if not an automaton
+
+
+    def test_dump_automaton(self):
+        self.add_words_and_make_automaton()
+        ret = self.A.dump()
+
+        self.assertEqual(3, len(ret))
+        self.assertNotEmpty(ret[0])     # list of nodes
+        self.assertNotEmpty(ret[1])     # list of edges
+        self.assertNotEmpty(ret[2])     # list of fail links
+
+
+class TestIssue53(TestCase):
     """
     Problems with handling of UCS-2 encoding
     """
@@ -941,6 +1395,156 @@ class TestIssue53(unittest.TestCase):
         # wrongly calculated the input's length
         for item in a.iter(test_string):
             pass
+
+
+class TestIssue68(TestCase):
+    """
+    Test problems with pickling
+    """
+
+    def test_case1(self):
+        if _pickle is None:
+            print("module _pickle not available")
+            return
+
+        A = ahocorasick.Automaton()
+        for i in range(0, 65):
+            A.add_word(str(i), (i, i))
+
+        path = 'TestIssue68.test_case1'
+        with open(path, 'wb') as f:
+            _pickle.dump(A, f)
+
+        with open(path, 'rb') as f:
+            _pickle.load(f)
+
+        try:
+            os.unlink(path)
+        except:
+            pass
+
+
+class TestLoadSave(TestAutomatonBase):
+
+    def __init__(self, *args):
+        super(TestAutomatonBase, self).__init__(*args)
+
+        if os.path.isdir("/dev/shm"):
+            tmp = "/dev/shm"
+        else:
+            tmp = "/tmp"
+
+        self.path = conv(os.path.join(tmp, "test.dat"))
+
+
+    def test_save__invalid_number_of_arguments(self):
+        A = self.add_words_and_make_automaton();
+        with self.assertRaisesRegex(ValueError, "expected exactly two arguments"):
+            A.save()
+
+
+    def test_save__invalid_argument_1(self):
+        A = self.add_words_and_make_automaton();
+        with self.assertRaisesRegex(TypeError, "the first argument must be a string"):
+            A.save(None, None)
+
+
+    def test_save__invalid_argument_2(self):
+        A = self.add_words_and_make_automaton();
+        with self.assertRaisesRegex(TypeError, "the second argument must be a callable object"):
+            A.save(self.path, None)
+
+
+    def test_load__invalid_number_of_arguments(self):
+        with self.assertRaisesRegex(ValueError, "expected exactly two arguments"):
+            ahocorasick.load()
+
+
+    def test_load__invalid_argument_1(self):
+        with self.assertRaisesRegex(TypeError, "the first argument must be a string"):
+            ahocorasick.load(None, None)
+
+
+    def test_load__invalid_argument_2(self):
+        with self.assertRaisesRegex(TypeError, "the second argument must be a callable object"):
+            ahocorasick.load("/dev/shm/test.dump", None)
+
+
+    def test_save(self):
+        import pickle
+
+        A = self.add_words_and_make_automaton();
+
+        A.save(self.path, pickle.dumps)
+
+
+    def test_save_and_load_empty(self):
+        import pickle
+
+        A = ahocorasick.Automaton()
+
+        A.save(self.path, pickle.dumps)
+        B = ahocorasick.load(self.path, pickle.loads)
+
+        self.compare_automatons(A, B)
+
+
+    def test_save_and_load_trie(self):
+        import pickle
+
+        A = self.add_words()
+
+        A.save(self.path, pickle.dumps)
+        B = ahocorasick.load(self.path, pickle.loads)
+
+        self.compare_automatons(A, B)
+
+
+    def test_save_and_load_automaton(self):
+        import pickle
+
+        A = self.add_words_and_make_automaton();
+
+        A.save(self.path, pickle.dumps)
+        B = ahocorasick.load(self.path, pickle.loads)
+
+        self.compare_automatons(A, B)
+
+
+    def test_save_ints(self):
+        A = ahocorasick.Automaton(ahocorasick.STORE_INTS)
+        with self.assertRaisesRegex(ValueError, "expected exactly one argument"):
+            A.save(self.path, None)
+
+
+    def test_save_and_load_ints(self):
+        import pickle
+
+        A = ahocorasick.Automaton(ahocorasick.STORE_INTS)
+        for i, word in enumerate(conv("he she her cat car carriage zoo")):
+            A.add_word(word, i)
+
+        A.save(self.path)
+        B = ahocorasick.load(self.path, pickle.loads)
+
+        self.compare_automatons(A, B)
+
+
+    def compare_automatons(self, A, B):
+        if print_dumps:
+            print([x for x in B.items()])
+            print([x for x in A.items()])
+
+        self.assertEqual(len(A), len(B))
+
+        A = list(A.items())
+        B = list(B.items())
+
+        for item in zip(A, B):
+            (AK, AV), (BK, BV) = item
+
+            self.assertEqual(AK, BK)
+            self.assertEqual(AV, BV)
 
 
 if __name__ == '__main__':
