@@ -966,6 +966,82 @@ automaton_iter(PyObject* self, PyObject* args, PyObject* keywds) {
 }
 
 
+static PyObject*
+automaton_iter_long(PyObject* self, PyObject* args) {
+#define automaton ((Automaton*)self)
+
+	if (automaton->kind != AHOCORASICK) {
+		PyErr_SetString(PyExc_AttributeError, "not an automaton yet; add some words and call make_automaton");
+		return NULL;
+	}
+
+	PyObject* object;
+	ssize_t start;
+	ssize_t end;
+
+	object = PyTuple_GetItem(args, 0);
+    if (object) {
+        if (automaton->key_type == KEY_STRING) {
+#ifdef PY3K
+    #ifdef AHOCORASICK_UNICODE
+        if (F(PyUnicode_Check)(object)) {
+            start   = 0;
+            #if PY_MINOR_VERSION >= 3
+                end = PyUnicode_GET_LENGTH(object);
+            #else
+                end = PyUnicode_GET_SIZE(object);
+            #endif
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError, "string required");
+            return NULL;
+        }
+    #else
+        if (F(PyBytes_Check)(object)) {
+            start   = 0;
+            end     = PyBytes_GET_SIZE(object);
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError, "bytes required");
+            return NULL;
+        }
+    #endif
+#else
+        if (F(PyString_Check)(object)) {
+            start   = 0;
+            end     = PyString_GET_SIZE(object);
+        } else {
+            PyErr_SetString(PyExc_TypeError, "string required");
+            return NULL;
+        }
+#endif
+        }
+        else {
+        if (F(PyTuple_Check)(object)) {
+            start = 0;
+            end = PyTuple_GET_SIZE(object);
+        } else {
+            PyErr_SetString(PyExc_TypeError, "tuple required");
+            return NULL;
+        }
+        }
+    }
+    else
+        return NULL;
+
+	if (pymod_parse_start_end(args, 1, 2, start, end, &start, &end))
+		return NULL;
+
+	return automaton_search_iter_long_new(
+		automaton,
+		object,
+		start,
+		end
+	);
+#undef automaton
+}
+
+
 static void
 get_stats_aux(TrieNode* node, AutomatonStatistics* stats, int depth) {
 
@@ -1140,6 +1216,7 @@ PyMethodDef automaton_methods[] = {
     method(make_automaton,  METH_NOARGS),
     method(find_all,        METH_VARARGS),
     method(iter,            METH_VARARGS|METH_KEYWORDS),
+	method(iter_long,		METH_VARARGS),
     method(keys,            METH_VARARGS),
     method(values,          METH_VARARGS),
     method(items,           METH_VARARGS),

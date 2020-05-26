@@ -1547,6 +1547,36 @@ class TestLoadSave(TestAutomatonBase):
             self.assertEqual(AV, BV)
 
 
+class TestLongIterString(TestAutomatonBase):
+    def test_match(self):
+        A = ahocorasick.Automaton();
+        for word in "he here her".split():
+            A.add_word(word, word)
+
+        A.make_automaton()
+
+        result = list(A.iter_long("he here her"))
+        self.assertEqual(result[0], (1, "he"))
+        self.assertEqual(result[1], (6, "here"))
+        self.assertEqual(result[2], (10, "her"))
+
+
+class TestLongIterSequence(TestAutomatonBase):
+    def test_match(self):
+        A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_SEQUENCE);
+        for word in [(1, 2), (1, 2, 3), (1, 2, 3, 4)]:
+            A.add_word(word, word)
+
+        A.make_automaton()
+
+        result = list(A.iter_long((0, 1, 2, 3, 4, 0, 0, 1, 2, 0, 1, 3, 1, 2, 3, 0)))
+        #                             ^^^^^^^^^^        ^^^^           ^^^^^^^
+        #                                index 4           8                14
+        self.assertEqual(result[0], (4, (1, 2, 3, 4)))
+        self.assertEqual(result[1], (8, (1, 2)))
+        self.assertEqual(result[2], (14, (1, 2, 3)))
+
+
 if __name__ == '__main__':
     unittest.main()
 
