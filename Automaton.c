@@ -970,18 +970,20 @@ static PyObject*
 automaton_iter_long(PyObject* self, PyObject* args) {
 #define automaton ((Automaton*)self)
 
+	PyObject* object;
+	ssize_t start;
+	ssize_t end;
+
 	if (automaton->kind != AHOCORASICK) {
 		PyErr_SetString(PyExc_AttributeError, "not an automaton yet; add some words and call make_automaton");
 		return NULL;
 	}
 
-	PyObject* object;
-	ssize_t start;
-	ssize_t end;
-
 	object = PyTuple_GetItem(args, 0);
-    if (object) {
-        if (automaton->key_type == KEY_STRING) {
+    if (object == NULL)
+        return NULL;
+
+    if (automaton->key_type == KEY_STRING) {
 #ifdef PY3K
     #ifdef AHOCORASICK_UNICODE
         if (F(PyUnicode_Check)(object)) {
@@ -1015,8 +1017,8 @@ automaton_iter_long(PyObject* self, PyObject* args) {
             return NULL;
         }
 #endif
-        }
-        else {
+    }
+    else {
         if (F(PyTuple_Check)(object)) {
             start = 0;
             end = PyTuple_GET_SIZE(object);
@@ -1024,10 +1026,7 @@ automaton_iter_long(PyObject* self, PyObject* args) {
             PyErr_SetString(PyExc_TypeError, "tuple required");
             return NULL;
         }
-        }
     }
-    else
-        return NULL;
 
 	if (pymod_parse_start_end(args, 1, 2, start, end, &start, &end))
 		return NULL;

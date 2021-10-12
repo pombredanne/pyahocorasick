@@ -153,7 +153,6 @@ static PyObject*
 automaton_search_iter_long_set(PyObject* self, PyObject* args) {
     PyObject* object;
     PyObject* flag;
-    ssize_t len;
     bool reset;
     struct Input new_input;
 
@@ -199,7 +198,7 @@ automaton_search_iter_long_set(PyObject* self, PyObject* args) {
         iter->shift += (iter->index >= 0) ? iter->index : 0;
 
     iter->index     = -1;
-    iter->end       = len;
+    iter->end       = new_input.wordlen;
 
     if (reset) {
         iter->state  = iter->automaton->root;
@@ -227,7 +226,7 @@ PyMethodDef automaton_search_iter_long_methods[] = {
 
 
 static PyTypeObject automaton_search_iter_long_type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    PY_OBJECT_HEAD_INIT
     "ahocorasick.AutomatonSearchIterLong",      /* tp_name */
     sizeof(AutomatonSearchIterLong),            /* tp_size */
     0,                                          /* tp_itemsize? */
