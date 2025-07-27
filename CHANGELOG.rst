@@ -1,11 +1,78 @@
-1.4.0 (2020-01-26)
+=============
+Changelog
+=============
+
+2.2.0 (2025-06-18)
+--------------------------------------------------
+
+- Drop support for Python 3.8. Use older version for pre-built wheels.
+  Note that it may work on these older versions, we are just no longer supporting
+  and testing these Python versions, as this is end of life
+
+- Add support for Python 3.13 and update CI scripts
+  https://github.com/WojciechMula/pyahocorasick/pull/194
+
+- Supports build pyahocorasick with GCC 15.0.1
+  https://github.com/WojciechMula/pyahocorasick/pull/201
+
+- Fix `iter-long` method
+  https://github.com/WojciechMula/pyahocorasick/pull/187
+  https://github.com/WojciechMula/pyahocorasick/pull/196
+
+
+2.1.0 (2024-03-21)
+--------------------------------------------------
+
+- Drop support for Python 3.6 and 3.7. Use older version for pre-built wheels.
+  Note that it may work on these older versions, we are just no longer supporting
+  and testing these Python versions 
+
+- Add support for Python 3.12
+
+
+2.0.0 (2023-01-14)
+--------------------------------------------------
+
+- Drop support for Python 2
+- Drop support for 32 bits OSes
+- Re-organize code such that sources are under src/, utilities under etc/
+  and tests are under tests/
+- Use pytest for testing and streamline tests to use a more conventional Python approach
+- Build more compatible Linux wheels using "ci-build-wheel"
+
+
+1.4.4 (2022-02-20)
+--------------------------------------------------
+
+- Minor rebuild to ensure Windows wheel documentation is correct ReST.
+
+
+1.4.3 (2022-02-20)
+--------------------------------------------------
+
+- Use cibuildwheel to tests and build wheels on many OSes (with GitHub actions)
+- Update supported Python versions. We cannot support what we cannot test:
+  - Drop official support for Python 2.7. 
+    Older version still run on Python 2.7+
+  - Ensure that we compile with Python 3.10 and plan for 3.11 
+  - Set minimum supported version of Python to 3.6
+  - Run tests in CI on 3.6, 3.7, 3.8, 3.9 and 3.10
+
+1.4.2 (2021-03-27)
 --------------------------------------------------
 
 - Add method ``iter_long``, that performs the modified
   Aho-Corasick search procedure matching the longest
   words from set.
 
-1.4.0 (2019-01-24)
+1.4.1 (2020-01-26)
+--------------------------------------------------
+
+- Add method ``iter_long``, that performs the modified
+  Aho-Corasick search procedure matching the longest
+  words from set.
+
+1.4.0 (2019-01-14)
 --------------------------------------------------
 
 - Change internal trie representation thanks to that performance

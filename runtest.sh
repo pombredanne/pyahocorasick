@@ -1,10 +1,15 @@
 #!/bin/bash
 
-TMPDIR=/dev/shm
+TMPDIR=/tmp
+SHM_DIR=/dev/shm
+if [[ -d "${SHM_DIR}" ]]
+then
+  TMPDIR="${SHM_DIR}"
+fi
 
 if [[ ${PYTHON} == "" ]]
 then
-    PYTHON=python
+    PYTHON=python3
 fi
 
 function print_help
@@ -89,7 +94,7 @@ function force_rebuild
 
 function run_unittests
 {
-    ${PYTHON} unittests.py ${UNITTEST}
+    venv/bin/pytest tests/test_unit.py ${UNITTEST}
     if [[ $? != 0 ]]
     then
         echo -e "${RED}Unit tests failed${RESET}"
@@ -105,7 +110,7 @@ function handle_unit
 
 function run_unpickletests
 {
-    ${PYTHON} unpickle_test.py
+    venv/bin/pytest tests/test_unpickle.py
     if [[ $? != 0 ]]
     then
         echo -e "${RED}Unpickle tests failed${RESET}"
@@ -149,7 +154,7 @@ function handle_valgrind
 
     local LOGFILE=${TMPDIR}/valgrind.log
     echo "Running valgrind..."
-    valgrind --log-file=${LOGFILE} --leak-check=full --track-origins=yes ${PYTHON} unittests.py
+    valgrind --log-file=${LOGFILE} --leak-check=full --track-origins=yes venv/bin/pytest tests/test_unit.py
     ${PYTHON} tests/valgrind_check.py . ${LOGFILE}
 }
 
@@ -179,7 +184,7 @@ function mallocfault
     export ALLOC_FAIL=$1
 
     local LOG=${TMPDIR}/mallocfault${ID}.log
-    ${PYTHON} unittests.py ${UNITTEST} -q > ${LOG} 2>&1
+    venv/bin/pytest tests/test_unit.py ${UNITTEST} -q > ${LOG} 2>&1
     if [[ $? == 139 ]]
     then
         echo -e "${RED}SEGFAULT${RESET}"
@@ -228,7 +233,7 @@ function reallocfault
     export REALLOC_FAIL=$1
 
     local LOG=${TMPDIR}/reallocfault${ID}.log
-    ${PYTHON} unittests.py ${UNITTEST} -q > ${LOG} 2>&1
+    venv/bin/pytest -vvs tests/test_unit.py ${UNITTEST} -q > ${LOG} 2>&1
     if [[ $? == 139 ]]
     then
         echo -e "${RED}SEGFAULT${RESET}"
@@ -257,7 +262,7 @@ function handle_pycallfaults
     force_rebuild
 
     local TMP=${TMPDIR}/pycallfaults
-    ${PYTHON} unittests.py ${UNITTEST} > ${TMP}
+    venv/bin/pytest tests/test_unit.py ${UNITTEST} > ${TMP}
 
     local MINID=0
     local MAXID=$(awk '
@@ -271,7 +276,7 @@ function handle_pycallfaults
         echo -n "Checking Python C-API fail ${ID} of ${MAXID}"
         local LOG=${TMPDIR}/pycallfaults${ID}.log
         export PYCALL_FAIL=${ID}
-        ${PYTHON} unittests.py ${UNITTEST} > ${LOG} 2>&1
+        venv/bin/pytest tests/test_unit.py ${UNITTEST} > ${LOG} 2>&1
         echo " return code $?"
         ${PYTHON} tests/pyfault_check.py ${LOG}
     done
@@ -287,7 +292,7 @@ function handle_coverage
 
     export CFLAGS="--coverage"
     force_rebuild
-    run_unittests
+    make test
 
     local DIR=coverage
     local INDEX=pyahocorasick.html
@@ -312,7 +317,7 @@ function handle_release
         run_unpickletests
     fi
 
-    # 2. build with memory debug and run unit tests and unpickle tests
+    # 2. build with memory debug and run unit tests and unpickle tests separately
     if true
     then
         export CFLAGS="${MEMORY_DEBUG}"
